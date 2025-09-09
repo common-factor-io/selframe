@@ -7,6 +7,7 @@ import googleCalendarService from '../lib/googleCalendar'
 
 const GoogleCalendarSync = ({ events, onImportEvents, onExportComplete }) => {
   const [authStatus, setAuthStatus] = useState({
+    isAvailable: false,
     isInitialized: false,
     isSignedIn: false,
     user: null
@@ -30,16 +31,27 @@ const GoogleCalendarSync = ({ events, onImportEvents, onExportComplete }) => {
 
   const initializeGoogleCalendar = async () => {
     try {
-      await googleCalendarService.initialize()
+      // First check if Google Calendar is available
       const status = googleCalendarService.getSignInStatus()
-      setAuthStatus(status)
       
-      if (status.isSignedIn) {
+      if (!status.isAvailable) {
+        setAuthStatus(status)
+        addSyncHistoryItem('info', 'Google Calendar integration not configured')
+        return
+      }
+
+      await googleCalendarService.initialize()
+      const updatedStatus = googleCalendarService.getSignInStatus()
+      setAuthStatus(updatedStatus)
+      
+      if (updatedStatus.isSignedIn) {
         await loadCalendars()
       }
     } catch (error) {
       console.error('Failed to initialize Google Calendar:', error)
-      addSyncHistoryItem('error', 'Failed to initialize Google Calendar API')
+      const status = googleCalendarService.getSignInStatus()
+      setAuthStatus(status)
+      addSyncHistoryItem('error', 'Google Calendar setup required')
     }
   }
 
@@ -214,6 +226,38 @@ const GoogleCalendarSync = ({ events, onImportEvents, onExportComplete }) => {
       case 'warning': return <AlertCircle className="w-4 h-4 text-yellow-500" />
       default: return <RefreshCw className="w-4 h-4 text-blue-500" />
     }
+  }
+
+  // Show setup message if Google Calendar is not configured
+  if (!authStatus.isAvailable) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Google Calendar Sync
+            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+              Setup Required
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-6 bg-yellow-50 rounded-lg border border-yellow-200">
+            <Settings className="w-12 h-12 mx-auto text-yellow-600 mb-3" />
+            <h3 className="font-medium text-yellow-900 mb-2">Google Calendar Setup Required</h3>
+            <p className="text-sm text-yellow-700 mb-4">
+              To enable Google Calendar sync, you'll need to configure your Google API credentials.
+            </p>
+            <div className="text-xs text-yellow-600 space-y-1">
+              <p>1. Create a Google Cloud project</p>
+              <p>2. Enable the Calendar API</p>
+              <p>3. Set VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY</p>
+              <p>4. Restart the development server</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (!authStatus.isInitialized) {

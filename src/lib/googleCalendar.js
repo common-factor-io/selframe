@@ -5,10 +5,18 @@
 
 // Google Calendar API configuration
 const GOOGLE_CONFIG = {
-  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'your-google-client-id',
-  apiKey: import.meta.env.VITE_GOOGLE_API_KEY || 'your-google-api-key',
+  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+  apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
   discoveryDoc: 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest',
   scopes: 'https://www.googleapis.com/auth/calendar'
+}
+
+// Check if Google Calendar integration is properly configured
+const isGoogleCalendarConfigured = () => {
+  return !!(GOOGLE_CONFIG.clientId && 
+           GOOGLE_CONFIG.apiKey && 
+           GOOGLE_CONFIG.clientId !== 'your-google-client-id' &&
+           GOOGLE_CONFIG.apiKey !== 'your-google-api-key')
 }
 
 class GoogleCalendarService {
@@ -24,6 +32,12 @@ class GoogleCalendarService {
    */
   async initialize() {
     if (this.isInitialized) return true
+
+    // Check if Google Calendar is properly configured
+    if (!isGoogleCalendarConfigured()) {
+      console.warn('Google Calendar integration not configured. Please set VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY environment variables.')
+      throw new Error('Google Calendar not configured')
+    }
 
     try {
       // Load Google API script if not already loaded
@@ -56,7 +70,7 @@ class GoogleCalendarService {
       return true
     } catch (error) {
       console.error('Failed to initialize Google Calendar API:', error)
-      throw new Error('Google Calendar initialization failed')
+      throw new Error('Google Calendar initialization failed: ' + error.message)
     }
   }
 
@@ -364,10 +378,18 @@ This event was created in Selframe to track mental health activities and their i
   }
 
   /**
+   * Check if Google Calendar is available and configured
+   */
+  isAvailable() {
+    return isGoogleCalendarConfigured()
+  }
+
+  /**
    * Check if user is signed in
    */
   getSignInStatus() {
     return {
+      isAvailable: this.isAvailable(),
       isInitialized: this.isInitialized,
       isSignedIn: this.isSignedIn,
       user: this.isSignedIn && this.authInstance ? {
