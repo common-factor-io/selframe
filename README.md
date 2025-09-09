@@ -81,6 +81,10 @@ npm run preview
 - Sharing and collaboration features
 - Mobile app version
 
+## 🔗 **Repository**
+
+**GitHub**: [https://github.com/common-factor-io/mental-health-tracker](https://github.com/common-factor-io/mental-health-tracker)
+
 ---
 
 **Built with ❤️ for better mental health tracking and awareness.**
