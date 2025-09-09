@@ -1,6 +1,6 @@
-# 🧠 Mental Health Tracker
+# 🎯 Selframe
 
-An interactive web application for tracking mental health activities and visualizing their impact over time.
+Frame your mental health journey with intention. An interactive web application for tracking self-care activities and visualizing their impact over time.
 
 ## 🌟 Features
 
@@ -83,8 +83,8 @@ npm run preview
 
 ## 🔗 **Repository**
 
-**GitHub**: [https://github.com/common-factor-io/mental-health-tracker](https://github.com/common-factor-io/mental-health-tracker)
+**GitHub**: [https://github.com/common-factor-io/selframe](https://github.com/common-factor-io/selframe)
 
 ---
 
-**Built with ❤️ for better mental health tracking and awareness.**
+**Built with ❤️ for intentional mental health and self-awareness.**
