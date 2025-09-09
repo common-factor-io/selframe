@@ -178,13 +178,13 @@ const Calendar = ({ events, onDeleteEvent }) => {
 
   // Generate detailed tooltip for heatmap mode
   const getDetailedTooltip = (day) => {
-    if (!day.influenceBreakdown) return `Mental Health Score: ${day.influenceScore || 0}%`
+    if (!day.influenceBreakdown) return `Selframe Score: ${day.influenceScore || 0}%`
     
     const breakdown = day.influenceBreakdown
     const lines = []
     
     // Header with total score
-    lines.push(`Mental Health Score: ${day.influenceScore || 0}%`)
+    lines.push(`Selframe Score: ${day.influenceScore || 0}%`)
     lines.push('') // Empty line
     
     // Direct events section
@@ -605,7 +605,7 @@ const Calendar = ({ events, onDeleteEvent }) => {
             <div className="flex items-center justify-between p-6 border-b">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">
-                  Mental Health Score Breakdown
+                  Selframe Score Breakdown
                 </h2>
                 <p className="text-sm text-gray-600">
                   {new Date(modalDay.dateString).toLocaleDateString('en-US', { 
@@ -633,7 +633,7 @@ const Calendar = ({ events, onDeleteEvent }) => {
                     <div className="text-3xl font-bold text-gray-900">
                       {modalDay.influenceScore || 0}%
                     </div>
-                    <div className="text-sm text-gray-600">Total Mental Health Score</div>
+                    <div className="text-sm text-gray-600">Total Selframe Score</div>
                   </div>
 
                   {/* Direct Events Section */}
