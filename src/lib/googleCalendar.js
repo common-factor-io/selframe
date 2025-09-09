@@ -5,8 +5,8 @@
 
 // Google Calendar API configuration
 const GOOGLE_CONFIG = {
-  clientId: process.env.VITE_GOOGLE_CLIENT_ID || 'your-google-client-id',
-  apiKey: process.env.VITE_GOOGLE_API_KEY || 'your-google-api-key',
+  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'your-google-client-id',
+  apiKey: import.meta.env.VITE_GOOGLE_API_KEY || 'your-google-api-key',
   discoveryDoc: 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest',
   scopes: 'https://www.googleapis.com/auth/calendar'
 }
