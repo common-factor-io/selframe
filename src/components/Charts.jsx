@@ -1,0 +1,859 @@
+import React, { useState, useEffect } from 'react'
+import Plot from 'react-plotly.js'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+
+const Charts = ({ events }) => {
+  const [activeChart, setActiveChart] = useState('timeline')
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Handle escape key to exit fullscreen
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      if (event.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false)
+      }
+    }
+
+    if (isFullscreen) {
+      document.addEventListener('keydown', handleKeyPress)
+      // Prevent body scroll when in fullscreen
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'auto'
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress)
+      document.body.style.overflow = 'auto'
+    }
+  }, [isFullscreen])
+
+  // Helper function to get category color for consistency
+  const getCategoryColor = (category) => {
+    switch (category) {
+      case 'therapy': return '#9333ea'
+      case 'exercise': return '#16a34a'
+      case 'quality time': return '#2563eb'
+      default: return '#6b7280'
+    }
+  }
+
+  // Helper function to get numeric category value for coloring
+  const getCategoryNumber = (category) => {
+    switch (category) {
+      case 'therapy': return 1;
+      case 'exercise': return 2;
+      case 'quality time': return 3;
+      default: return 0;
+    }
+  }
+
+  // Helper function to convert reach to days
+  const reachToDays = (reachValue, reachUnit) => {
+    const value = Number(reachValue) || 1;
+    switch (reachUnit) {
+      case 'days': return value;
+      case 'weeks': return value * 7;
+      case 'months': return value * 30;
+      case 'years': return value * 365;
+      default: return value;
+    }
+  }
+
+  // Helper function to calculate end date of reach
+  const getReachEndDate = (startDate, reachValue, reachUnit) => {
+    const start = new Date(startDate);
+    const daysToAdd = reachToDays(reachValue, reachUnit);
+    const endDate = new Date(start);
+    endDate.setDate(start.getDate() + daysToAdd);
+    return endDate.toISOString().split('T')[0];
+  }
+
+  // Helper function to calculate Gaussian distribution value
+  const gaussianValue = (x, mean, sigma) => {
+    const coefficient = 1 / (sigma * Math.sqrt(2 * Math.PI));
+    const exponent = -0.5 * Math.pow((x - mean) / sigma, 2);
+    return coefficient * Math.exp(exponent);
+  }
+
+  // Helper function to generate date range
+  const getDateRange = (startDate, endDate, intervalDays = 1) => {
+    const dates = [];
+    const current = new Date(startDate);
+    const end = new Date(endDate);
+    
+    while (current <= end) {
+      dates.push(new Date(current));
+      current.setDate(current.getDate() + intervalDays);
+    }
+    return dates;
+  }
+
+  // Timeline Chart - Shows events over time
+  const getTimelineChart = () => {
+    if (events.length === 0) return null
+
+    // Sort events by date
+    const sortedEvents = [...events].sort((a, b) => new Date(a.date) - new Date(b.date))
+
+    // Prepare data for each category
+    const categories = ['therapy', 'exercise', 'quality time']
+    const traces = categories.map(category => {
+      const categoryEvents = sortedEvents.filter(event => event.category === category)
+      
+      return {
+        x: categoryEvents.map(event => event.date),
+        y: categoryEvents.map(event => event.rippleScore || 0),
+        mode: 'markers+lines',
+        name: category.charAt(0).toUpperCase() + category.slice(1),
+        marker: {
+          color: getCategoryColor(category),
+          size: categoryEvents.map(event => Math.max(8, event.impact * 2)), // Size based on impact
+        },
+        line: {
+          color: getCategoryColor(category),
+        },
+        hovertemplate: 
+          '<b>%{fullData.name}</b><br>' +
+          'Date: %{x}<br>' +
+          'Ripple Score: %{y}<br>' +
+          '<extra></extra>'
+      }
+    })
+
+    return {
+      data: traces,
+      layout: {
+        title: 'Mental Health Activities Timeline',
+        xaxis: { title: 'Date' },
+        yaxis: { title: 'Ripple Score' },
+        hovermode: 'closest',
+        showlegend: true,
+        margin: { t: 50, r: 50, b: 50, l: 50 }
+      }
+    }
+  }
+
+  // Impact vs Duration Scatter Plot
+  const getScatterChart = () => {
+    if (events.length === 0) return null
+
+    const traces = events.map((event, index) => ({
+      x: [event.impact],
+      y: [event.rippleScore || 0],
+      mode: 'markers',
+      marker: {
+        color: getCategoryColor(event.category),
+        size: 15,
+        opacity: 0.7
+      },
+      name: event.name,
+      text: [event.name],
+      hovertemplate: 
+        '<b>%{text}</b><br>' +
+        'Impact: %{x}/10<br>' +
+        'Ripple Score: %{y}<br>' +
+        `Category: ${event.category}<br>` +
+        '<extra></extra>',
+      showlegend: false
+    }))
+
+    return {
+      data: traces,
+      layout: {
+        title: 'Impact vs Ripple Score',
+        xaxis: { title: 'Impact (1-10)' },
+        yaxis: { title: 'Ripple Score' },
+        hovermode: 'closest',
+        margin: { t: 50, r: 50, b: 50, l: 50 }
+      }
+    }
+  }
+
+  // Category Summary Bar Chart
+  const getBarChart = () => {
+    if (events.length === 0) return null
+
+    // Calculate averages by category
+    const categoryStats = {}
+    events.forEach(event => {
+      if (!categoryStats[event.category]) {
+        categoryStats[event.category] = {
+          totalRipple: 0,
+          totalImpact: 0,
+          count: 0
+        }
+      }
+      categoryStats[event.category].totalRipple += event.rippleScore || 0
+      categoryStats[event.category].totalImpact += event.impact || 0
+      categoryStats[event.category].count += 1
+    })
+
+    const categories = Object.keys(categoryStats)
+    const avgRippleScores = categories.map(cat => 
+      categoryStats[cat].totalRipple / categoryStats[cat].count
+    )
+    const avgImpactScores = categories.map(cat => 
+      categoryStats[cat].totalImpact / categoryStats[cat].count
+    )
+
+    return {
+      data: [
+        {
+          x: categories.map(cat => cat.charAt(0).toUpperCase() + cat.slice(1)),
+          y: avgRippleScores,
+          type: 'bar',
+          name: 'Avg Ripple Score',
+          marker: {
+            color: categories.map(cat => getCategoryColor(cat)),
+            opacity: 0.8
+          },
+          hovertemplate: 
+            '<b>%{x}</b><br>' +
+            'Avg Ripple Score: %{y:.1f}<br>' +
+            '<extra></extra>'
+        }
+      ],
+      layout: {
+        title: 'Average Ripple Score by Category',
+        xaxis: { title: 'Category' },
+        yaxis: { title: 'Average Ripple Score' },
+        margin: { t: 50, r: 50, b: 50, l: 50 }
+      }
+    }
+  }
+
+  // 3D Scatter Plot - Impact vs Duration vs Reach
+  const get3DChart = () => {
+    if (events.length === 0) return null
+
+    const durationToMinutes = (duration, isAllDay) => {
+      if (isAllDay) return 480 // 8 hours
+      if (!duration) return 60
+      const [hours, minutes] = duration.split(':').map(Number)
+      return hours * 60 + minutes
+    }
+
+    const reachToDays = (reachValue, reachUnit) => {
+      const value = Number(reachValue) || 1
+      switch (reachUnit) {
+        case 'days': return value
+        case 'weeks': return value * 7
+        case 'months': return value * 30
+        case 'years': return value * 365
+        default: return value
+      }
+    }
+
+    const traces = [{
+      x: events.map(event => event.impact),
+      y: events.map(event => durationToMinutes(event.duration, event.isAllDay)),
+      z: events.map(event => reachToDays(event.reachValue, event.reachUnit)),
+      mode: 'markers',
+      marker: {
+        size: events.map(event => (event.rippleScore || 0) / 10 + 5), // Size based on ripple score
+        color: events.map(event => getCategoryColor(event.category)),
+        opacity: 0.8
+      },
+      type: 'scatter3d',
+      text: events.map(event => event.name),
+      hovertemplate: 
+        '<b>%{text}</b><br>' +
+        'Impact: %{x}/10<br>' +
+        'Duration: %{y} min<br>' +
+        'Reach: %{z} days<br>' +
+        '<extra></extra>'
+    }]
+
+    return {
+      data: traces,
+      layout: {
+        title: '3D View: Impact vs Duration vs Reach',
+        scene: {
+          xaxis: { title: 'Impact (1-10)' },
+          yaxis: { title: 'Duration (minutes)' },
+          zaxis: { title: 'Reach (days)' }
+        },
+        margin: { t: 50, r: 50, b: 50, l: 50 }
+      }
+    }
+  }
+
+  // 3D Subplot Chart - Date vs Impact vs Categories with Reach Bell Curves
+  const get3DSubplotChart = () => {
+    if (events.length === 0) return null
+
+    // Find date range for the chart
+    const eventDates = events.map(e => new Date(e.date))
+    const minDate = new Date(Math.min(...eventDates))
+    const maxDate = new Date(Math.max(...eventDates))
+    
+    // Extend the range to show complete bell curves
+    minDate.setDate(minDate.getDate() - 30)
+    maxDate.setDate(maxDate.getDate() + 60)
+    
+    // Generate date range for bell curves
+    const dateRange = getDateRange(minDate, maxDate, 2) // Every 2 days for performance
+    
+    const traces = []
+    
+    // Category mapping for z-axis positioning
+    const categoryMap = {
+      'therapy': 0,
+      'exercise': 1,
+      'quality time': 2
+    }
+    
+    // Add main event points
+    const eventTrace = {
+      x: events.map(event => event.date),
+      y: events.map(event => categoryMap[event.category] || 0),
+      z: events.map(event => event.impact),
+      mode: 'markers',
+      marker: {
+        size: 12, // Fixed size for all events
+        color: events.map(event => getCategoryColor(event.category)),
+        opacity: 0.9,
+        symbol: 'diamond',
+        line: { color: 'white', width: 2 }
+      },
+      type: 'scatter3d',
+      name: 'Events',
+      text: events.map(event => `${event.name} (${event.date})`),
+      hovertemplate: 
+        '<b>%{text}</b><br>' +
+        'Date: %{x}<br>' +
+        'Category: %{y}<br>' +
+        'Impact: %{z}/10<br>' +
+        'Reach: ' + events.map(e => `${e.reachValue} ${e.reachUnit}`).join('<br>Reach: ') +
+        '<extra></extra>',
+      showlegend: true
+    }
+    traces.push(eventTrace)
+    
+    // Add reach bell curves for each event
+    events.forEach((event, eventIndex) => {
+      const eventDate = new Date(event.date)
+      const reachDays = reachToDays(event.reachValue, event.reachUnit)
+      const sigma = reachDays / 3 // 3-sigma rule
+      const categoryY = categoryMap[event.category] || 0
+      
+      // Calculate bell curve values
+      const bellCurveX = []
+      const bellCurveY = []
+      const bellCurveZ = []
+      
+      dateRange.forEach(date => {
+        const daysDiff = (date - eventDate) / (1000 * 60 * 60 * 24)
+        
+        // Only include points within 3 sigma for performance
+        if (Math.abs(daysDiff) <= reachDays) {
+          const gaussianValue = Math.exp(-0.5 * Math.pow(daysDiff / sigma, 2))
+          const scaledImpact = event.impact * gaussianValue
+          
+          if (scaledImpact > 0.1) { // Only show significant influence
+            bellCurveX.push(date.toISOString().split('T')[0])
+            bellCurveY.push(categoryY)
+            bellCurveZ.push(scaledImpact)
+          }
+        }
+      })
+      
+      // Add bell curve trace
+      if (bellCurveX.length > 0) {
+        traces.push({
+          x: bellCurveX,
+          y: bellCurveY,
+          z: bellCurveZ,
+          mode: 'lines',
+          line: {
+            color: getCategoryColor(event.category),
+            width: 3,
+            opacity: 0.6
+          },
+          type: 'scatter3d',
+          name: `${event.name} Reach`,
+          hovertemplate: 
+            `<b>${event.name} Influence</b><br>` +
+            'Date: %{x}<br>' +
+            'Category: %{y}<br>' +
+            'Influence: %{z:.1f}<br>' +
+            '<extra></extra>',
+          showlegend: eventIndex < 5, // Only show legend for first 5 events
+          legendgroup: event.category
+        })
+      }
+    })
+    
+    // Add category planes for better visualization
+    const categoryNames = ['Therapy', 'Exercise', 'Quality Time']
+    const categoryColors = ['#9333ea', '#16a34a', '#2563eb']
+    
+    categoryNames.forEach((categoryName, index) => {
+      const planeSize = 0.4
+      traces.push({
+        x: [minDate.toISOString().split('T')[0], maxDate.toISOString().split('T')[0], 
+            maxDate.toISOString().split('T')[0], minDate.toISOString().split('T')[0]],
+        y: [index - planeSize, index - planeSize, index - planeSize, index - planeSize],
+        z: [0, 0, 10, 10],
+        type: 'mesh3d',
+        opacity: 0.1,
+        color: categoryColors[index],
+        name: `${categoryName} Plane`,
+        showlegend: false,
+        hoverinfo: 'skip'
+      })
+    })
+
+    return {
+      data: traces,
+      layout: {
+        title: '3D Mental Health Landscape: Date × Categories × Impact + Reach Curves',
+        scene: {
+          xaxis: { 
+            title: 'Date',
+            type: 'date'
+          },
+          yaxis: { 
+            title: 'Categories',
+            tickmode: 'array',
+            tickvals: [0, 1, 2],
+            ticktext: ['Therapy', 'Exercise', 'Quality Time'],
+            range: [-0.5, 2.5]
+          },
+          zaxis: { 
+            title: 'Impact Level (1-10)',
+            range: [0, 10]
+          },
+          camera: {
+            eye: { x: 1.5, y: 1.5, z: 1.5 }
+          }
+        },
+        margin: { t: 80, r: 50, b: 50, l: 50 },
+        legend: {
+          x: 1.02,
+          y: 1,
+          bgcolor: 'rgba(255,255,255,0.8)',
+          bordercolor: 'rgba(0,0,0,0.1)',
+          borderwidth: 1
+        }
+      }
+    }
+  }
+
+  // Mental Health Coverage Chart - Shows overlapping impact over time with Gaussian distributions
+  const getCoverageChart = () => {
+    if (events.length === 0) return null
+
+    // Find date range for the chart
+    const eventDates = events.map(e => new Date(e.date))
+    const minDate = new Date(Math.min(...eventDates))
+    const maxDate = new Date(Math.max(...eventDates))
+    
+    // Extend the range to show coverage gaps
+    minDate.setDate(minDate.getDate() - 30)
+    maxDate.setDate(maxDate.getDate() + 30)
+    
+    // Generate daily data points
+    const dateRange = getDateRange(minDate, maxDate, 1)
+    const traces = []
+    
+    // Calculate cumulative impact for each day using Gaussian distributions
+    const cumulativeImpact = dateRange.map(date => {
+      let totalImpact = 0
+      
+      events.forEach(event => {
+        const eventDate = new Date(event.date)
+        const daysDiff = (date - eventDate) / (1000 * 60 * 60 * 24)
+        
+        // Use reach as the standard deviation (sigma) for the Gaussian
+        const reachDays = reachToDays(event.reachValue, event.reachUnit)
+        const sigma = reachDays / 3 // 3-sigma rule covers most of the distribution
+        
+        // Calculate Gaussian value and scale by impact
+        const gaussianImpact = gaussianValue(daysDiff, 0, sigma) * event.impact * sigma * Math.sqrt(2 * Math.PI)
+        totalImpact += gaussianImpact
+      })
+      
+      return totalImpact
+    })
+    
+    // Create the main coverage area chart
+    traces.push({
+      x: dateRange,
+      y: cumulativeImpact,
+      type: 'scatter',
+      mode: 'lines',
+      fill: 'tonexty',
+      fillcolor: 'rgba(99, 102, 241, 0.2)',
+      line: {
+        color: '#6366f1',
+        width: 2
+      },
+      name: 'Mental Health Coverage',
+      hovertemplate: 
+        'Date: %{x}<br>' +
+        'Coverage Level: %{y:.1f}<br>' +
+        '<extra></extra>'
+    })
+    
+    // Add individual event markers
+    events.forEach(event => {
+      const eventDate = new Date(event.date)
+      const eventIndex = dateRange.findIndex(d => d.toDateString() === eventDate.toDateString())
+      
+      if (eventIndex >= 0) {
+        traces.push({
+          x: [eventDate],
+          y: [cumulativeImpact[eventIndex]],
+          type: 'scatter',
+          mode: 'markers',
+          marker: {
+            color: getCategoryColor(event.category),
+            size: Math.max(8, event.impact * 2),
+            symbol: 'circle',
+            line: { color: 'white', width: 2 }
+          },
+          name: `${event.name}`,
+          hovertemplate: 
+            `<b>%{text}</b><br>` +
+            `Category: ${event.category}<br>` +
+            `Impact: ${event.impact}/10<br>` +
+            `Reach: ${event.reachValue} ${event.reachUnit}<br>` +
+            `Date: ${event.date}<extra></extra>`,
+          text: event.name,
+          showlegend: false
+        })
+      }
+    })
+    
+    // Add threshold line for low coverage
+    const averageCoverage = cumulativeImpact.reduce((sum, val) => sum + val, 0) / cumulativeImpact.length
+    const lowCoverageThreshold = averageCoverage * 0.5
+    
+    traces.push({
+      x: dateRange,
+      y: Array(dateRange.length).fill(lowCoverageThreshold),
+      type: 'scatter',
+      mode: 'lines',
+      line: {
+        color: '#ef4444',
+        width: 2,
+        dash: 'dash'
+      },
+      name: 'Low Coverage Threshold',
+      hovertemplate: 'Threshold: %{y:.1f}<extra></extra>'
+    })
+
+    return {
+      data: traces,
+      layout: {
+        title: 'Mental Health Coverage Planning',
+        xaxis: { 
+          title: 'Date',
+          type: 'date'
+        },
+        yaxis: { 
+          title: 'Cumulative Mental Health Impact',
+          rangemode: 'tozero'
+        },
+        margin: { t: 60, r: 50, b: 80, l: 80 },
+        hovermode: 'x unified',
+        showlegend: true,
+        legend: {
+          x: 0,
+          y: 1,
+          bgcolor: 'rgba(255,255,255,0.8)'
+        }
+      }
+    }
+  }
+
+  // Individual Event Curves Chart - Shows individual reach curves for each event
+  const getIndividualCurvesChart = () => {
+    if (events.length === 0) return null
+
+    // Find date range for the chart
+    const eventDates = events.map(e => new Date(e.date))
+    const minDate = new Date(Math.min(...eventDates))
+    const maxDate = new Date(Math.max(...eventDates))
+    
+    // Extend the range to show complete curves
+    minDate.setDate(minDate.getDate() - 30)
+    maxDate.setDate(maxDate.getDate() + 60)
+    
+    // Generate daily data points
+    const dateRange = getDateRange(minDate, maxDate, 1)
+    const traces = []
+    
+    // Create a curve for each event
+    events.forEach((event, index) => {
+      const eventDate = new Date(event.date)
+      const reachDays = reachToDays(event.reachValue, event.reachUnit)
+      const sigma = reachDays / 3 // 3-sigma rule covers most of the distribution
+      
+      // Calculate the curve values for this event
+      const curveValues = dateRange.map(date => {
+        const daysDiff = (date - eventDate) / (1000 * 60 * 60 * 24)
+        
+        // Calculate Gaussian value and scale by impact
+        const gaussianImpact = gaussianValue(daysDiff, 0, sigma) * event.impact * sigma * Math.sqrt(2 * Math.PI)
+        return Math.max(0, gaussianImpact) // Ensure non-negative values
+      })
+      
+      // Add the curve trace
+      traces.push({
+        x: dateRange,
+        y: curveValues,
+        type: 'scatter',
+        mode: 'lines',
+        fill: 'tonexty',
+        fillcolor: `${getCategoryColor(event.category)}20`, // 20% opacity
+        line: {
+          color: getCategoryColor(event.category),
+          width: 2
+        },
+        name: `${event.name} (${event.date})`,
+        hovertemplate: 
+          `<b>${event.name}</b><br>` +
+          `Category: ${event.category}<br>` +
+          `Impact: ${event.impact}/10<br>` +
+          `Reach: ${event.reachValue} ${event.reachUnit}<br>` +
+          `Date: %{x}<br>` +
+          `Influence: %{y:.1f}<br>` +
+          '<extra></extra>',
+        legendgroup: event.category,
+        showlegend: index < 10 // Only show legend for first 10 events to avoid clutter
+      })
+      
+      // Add event marker at the peak
+      const eventIndex = dateRange.findIndex(d => d.toDateString() === eventDate.toDateString())
+      if (eventIndex >= 0) {
+        traces.push({
+          x: [eventDate],
+          y: [curveValues[eventIndex]],
+          type: 'scatter',
+          mode: 'markers',
+          marker: {
+            color: getCategoryColor(event.category),
+            size: Math.max(10, event.impact * 2),
+            symbol: 'circle',
+            line: { color: 'white', width: 2 }
+          },
+          name: event.name,
+          hovertemplate: 
+            `<b>${event.name}</b><br>` +
+            `Category: ${event.category}<br>` +
+            `Impact: ${event.impact}/10<br>` +
+            `Reach: ${event.reachValue} ${event.reachUnit}<br>` +
+            `Date: ${event.date}<br>` +
+            `Peak Influence: %{y:.1f}<extra></extra>`,
+          showlegend: false
+        })
+      }
+    })
+
+    return {
+      data: traces,
+      layout: {
+        title: 'Individual Event Reach Curves',
+        xaxis: { 
+          title: 'Date',
+          type: 'date'
+        },
+        yaxis: { 
+          title: 'Individual Event Influence',
+          rangemode: 'tozero'
+        },
+        margin: { t: 60, r: 50, b: 80, l: 80 },
+        hovermode: 'x unified',
+        showlegend: true,
+        legend: {
+          x: 1.02,
+          y: 1,
+          bgcolor: 'rgba(255,255,255,0.8)',
+          bordercolor: 'rgba(0,0,0,0.1)',
+          borderwidth: 1
+        }
+      }
+    }
+  }
+
+  const renderChart = () => {
+    let chartConfig = null
+    
+    switch (activeChart) {
+      case 'timeline':
+        chartConfig = getTimelineChart()
+        break
+      case 'scatter':
+        chartConfig = getScatterChart()
+        break
+      case 'bar':
+        chartConfig = getBarChart()
+        break
+      case '3d':
+        chartConfig = get3DChart()
+        break
+      case '3d-subplot':
+        chartConfig = get3DSubplotChart()
+        break
+      case 'coverage':
+        chartConfig = getCoverageChart()
+        break
+      case 'individual':
+        chartConfig = getIndividualCurvesChart()
+        break
+      default:
+        chartConfig = getTimelineChart()
+    }
+
+    if (!chartConfig) {
+      return (
+        <div className="text-center py-8">
+          <div className="text-4xl mb-2">📊</div>
+          <p className="text-gray-500">Add some activities to see your data visualized!</p>
+        </div>
+      )
+    }
+
+    return (
+      <Plot
+        data={chartConfig.data}
+        layout={{
+          ...chartConfig.layout,
+          autosize: true,
+          responsive: true
+        }}
+        style={{ 
+          width: '100%', 
+          height: isFullscreen ? 'calc(100vh - 250px)' : '500px' 
+        }}
+        useResizeHandler={true}
+      />
+    )
+  }
+
+  const getChartDescription = () => {
+    switch (activeChart) {
+      case 'timeline':
+        return 'Track your mental health activities over time. Line thickness shows impact level.'
+      case 'scatter':
+        return 'Explore the relationship between impact and ripple score for each activity.'
+      case 'bar':
+        return 'Compare average ripple scores across different activity categories.'
+      case '3d':
+        return 'Interactive 3D view showing impact, duration, and reach relationships.'
+      case '3d-subplot':
+        return 'Immersive 3D landscape with date (X), categories (Y), and impact (Z) as axes. Includes reach bell curves showing how each event\'s influence extends over time.'
+      case 'coverage':
+        return 'Plan your mental health schedule by seeing coverage gaps. Blue area shows cumulative benefits, red line shows low coverage threshold.'
+      case 'individual':
+        return 'See individual reach curves for each event. Each curve shows how an event\'s influence extends over time based on its reach.'
+      default:
+        return ''
+    }
+  }
+
+  const chartButtons = [
+    { id: 'timeline', label: 'Timeline', icon: '📈' },
+    { id: 'scatter', label: 'Impact Analysis', icon: '🎯' },
+    { id: 'bar', label: 'Category Summary', icon: '📊' },
+    { id: '3d', label: '3D Explorer', icon: '🌐' },
+    { id: '3d-subplot', label: '3D Landscape', icon: '🏔️' },
+    { id: 'coverage', label: 'Coverage Planning', icon: '📅' },
+    { id: 'individual', label: 'Individual Curves', icon: '🌊' }
+  ]
+
+  return (
+    <Card className={`w-full ${isFullscreen ? 'fixed inset-0 z-50 max-w-none max-h-none bg-white overflow-y-auto' : ''}`}>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
+              📊 Data Visualization
+              <Badge variant="outline" className="text-xs">
+                {events.length} activities
+              </Badge>
+            </CardTitle>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="flex items-center gap-2"
+          >
+            {isFullscreen ? (
+              <>
+                <span>📐</span>
+                Exit Fullscreen
+              </>
+            ) : (
+              <>
+                <span>🔍</span>
+                Fullscreen
+              </>
+            )}
+          </Button>
+        </div>
+        <p className="text-sm text-gray-600">{getChartDescription()}</p>
+      </CardHeader>
+      <CardContent>
+        {/* Chart Type Selector */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {chartButtons.map(chart => (
+            <Button
+              key={chart.id}
+              variant={activeChart === chart.id ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveChart(chart.id)}
+              className="flex items-center gap-2"
+            >
+              <span>{chart.icon}</span>
+              {chart.label}
+            </Button>
+          ))}
+        </div>
+
+        {/* Chart Display */}
+        <div className="w-full">
+          {renderChart()}
+        </div>
+
+        {/* Quick Stats */}
+        {events.length > 0 && (
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {events.length}
+              </div>
+              <div className="text-sm text-gray-600">Total Activities</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {(events.reduce((sum, e) => sum + (e.rippleScore || 0), 0) / events.length).toFixed(1)}
+              </div>
+              <div className="text-sm text-gray-600">Avg Ripple Score</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                {(events.reduce((sum, e) => sum + (e.impact || 0), 0) / events.length).toFixed(1)}
+              </div>
+              <div className="text-sm text-gray-600">Avg Impact</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600">
+                {Math.max(...events.map(e => e.rippleScore || 0)).toFixed(1)}
+              </div>
+              <div className="text-sm text-gray-600">Best Ripple Score</div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+export default Charts
