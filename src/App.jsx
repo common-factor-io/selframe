@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { X, Download, Upload, Database } from 'lucide-react'
 import Charts from './components/Charts'
 import Calendar from './components/Calendar'
+import GoogleCalendarSync from './components/GoogleCalendarSync'
 import { StorageManager } from './lib/storage'
 
 // Helper function to convert HH:MM duration to minutes
@@ -204,6 +205,31 @@ function App() {
         alert('All data has been cleared successfully.')
       }
     }
+  }
+
+  // Handle Google Calendar import
+  const handleGoogleCalendarImport = (importedEvents) => {
+    try {
+      // Merge imported events with existing events
+      const existingIds = new Set(events.map(e => e.id))
+      const newEvents = importedEvents.filter(e => !existingIds.has(e.id))
+      
+      if (newEvents.length > 0) {
+        const updatedEvents = [...events, ...newEvents]
+        setEvents(updatedEvents)
+        StorageManager.saveEvents(updatedEvents)
+        setStorageInfo(StorageManager.getStorageInfo())
+      }
+    } catch (error) {
+      console.error('Failed to import Google Calendar events:', error)
+      alert('Failed to import events: ' + error.message)
+    }
+  }
+
+  // Handle Google Calendar export complete
+  const handleGoogleCalendarExportComplete = (exportCount) => {
+    // Optional: Show success message or update UI
+    console.log(`Successfully exported ${exportCount} events to Google Calendar`)
   }
 
   const getCategoryVariant = (category) => {
@@ -547,6 +573,13 @@ function App() {
                </div>
              </CardContent>
            </Card>
+
+           {/* Google Calendar Sync Section */}
+           <GoogleCalendarSync 
+             events={events}
+             onImportEvents={handleGoogleCalendarImport}
+             onExportComplete={handleGoogleCalendarExportComplete}
+           />
 
            {/* Charts Section */}
            <div className="xl:col-span-1 lg:col-span-2">

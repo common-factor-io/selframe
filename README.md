@@ -24,7 +24,16 @@ Frame your mental health journey with intention. An interactive web application 
 ### 💾 **Data Management**
 - **Local Storage**: Your data persists between sessions
 - **Export/Import**: Backup and restore your activity data
+- **Google Calendar Sync**: Two-way synchronization with Google Calendar
 - **Dummy Data**: Generate sample data for testing and demonstration
+
+### 📅 **Google Calendar Integration**
+- **OAuth Authentication**: Secure connection to your Google account
+- **Two-way Sync**: Export Selframe events to Google Calendar and import existing events
+- **Calendar Selection**: Choose which Google Calendar to sync with
+- **Smart Categorization**: Automatically categorizes imported events
+- **Conflict Resolution**: Handles duplicate events intelligently
+- **Real-time Status**: Live sync progress and history tracking
 
 ## 🚀 **Technology Stack**
 
@@ -32,6 +41,7 @@ Frame your mental health journey with intention. An interactive web application 
 - **Vite** for fast development and building
 - **Tailwind CSS** for responsive styling
 - **Plotly.js** for interactive data visualizations
+- **Google Calendar API** for calendar integration
 - **Lucide React** for beautiful icons
 - **Local Storage** for data persistence
 
@@ -73,13 +83,44 @@ npm run build
 npm run preview
 ```
 
+### 📅 **Google Calendar Setup**
+
+1. **Create Google Cloud Project**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select existing one
+
+2. **Enable Calendar API**:
+   - Navigate to "APIs & Services" → "Library"
+   - Search for "Google Calendar API" and enable it
+
+3. **Create Credentials**:
+   - Go to "APIs & Services" → "Credentials"
+   - Create "OAuth 2.0 Client ID" and "API Key"
+   - Add your domain to authorized origins
+
+4. **Configure Environment**:
+   ```bash
+   # Copy the example file
+   cp env.example .env
+   
+   # Add your Google credentials to .env
+   VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   VITE_GOOGLE_API_KEY=your-api-key
+   ```
+
+5. **Deploy Considerations**:
+   - Add your production domain to Google OAuth authorized origins
+   - Ensure environment variables are set in your deployment platform
+
 ## 📈 **Future Enhancements**
 
-- Google Calendar integration for two-way sync
+- ✅ ~~Google Calendar integration for two-way sync~~ **COMPLETED**
 - Advanced analytics and trends
 - Goal setting and progress tracking
 - Sharing and collaboration features
 - Mobile app version
+- Recurring event templates
+- Team/family sharing capabilities
 
 ## 🔗 **Repository**
 
