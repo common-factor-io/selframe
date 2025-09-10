@@ -331,7 +331,7 @@ function App() {
     <div className="min-h-screen bg-stone-100 from-blue-50 to-indigo-100 p-4 pt-10">
       <div className="max-w-6xl mx-auto">
         <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">🎯 Selframe</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Selframe</h1>
           <p className="text-gray-600">Frame your mental health journey with intention</p>
         </header>
 
