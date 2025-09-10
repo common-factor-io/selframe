@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { X, Download, Upload, Database } from 'lucide-react'
 import Charts from './components/Charts'
 import Calendar from './components/Calendar'
-import GoogleCalendarSync from './components/GoogleCalendarSync'
+// import GoogleCalendarSync from './components/GoogleCalendarSync' // Disabled for now
 import { StorageManager } from './lib/storage'
 
 // Helper function to convert HH:MM duration to minutes
@@ -207,7 +207,8 @@ function App() {
     }
   }
 
-  // Handle Google Calendar import
+  // Google Calendar handlers - Disabled for now
+  /*
   const handleGoogleCalendarImport = (importedEvents) => {
     try {
       // Merge imported events with existing events
@@ -226,11 +227,11 @@ function App() {
     }
   }
 
-  // Handle Google Calendar export complete
   const handleGoogleCalendarExportComplete = (exportCount) => {
     // Optional: Show success message or update UI
     console.log(`Successfully exported ${exportCount} events to Google Calendar`)
   }
+  */
 
   const getCategoryVariant = (category) => {
     switch (category) {
@@ -574,12 +575,14 @@ function App() {
              </CardContent>
            </Card>
 
-           {/* Google Calendar Sync Section */}
+           {/* Google Calendar Sync Section - Disabled for now */}
+           {/* 
            <GoogleCalendarSync 
              events={events}
              onImportEvents={handleGoogleCalendarImport}
              onExportComplete={handleGoogleCalendarExportComplete}
            />
+           */}
 
            {/* Charts Section */}
            <div className="xl:col-span-1 lg:col-span-2">
